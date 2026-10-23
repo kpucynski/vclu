@@ -1201,3 +1201,43 @@ func TestRefreshAll_ErrorInStepKeepsChain(t *testing.T) {
 		t.Errorf("chain should be finished, got %s", got)
 	}
 }
+
+// TestAutoSubscribe_NoPerCLUCap verifies that every whitelisted object is subscribed,
+// with hundreds of objects per CLU. Regression: a hardcoded cap kept 64 per CLU and
+// dropped the rest silently (a 4-CLU install stopped at 256).
+func TestAutoSubscribe_NoPerCLUCap(t *testing.T) {
+	engine, _ := setupSubscriptionEngine(t, 0)
+	defer engine.Close()
+
+	mustExec(t, engine, `
+		local counts = { ["192.168.0.11"] = 4, ["192.168.0.12"] = 271, ["192.168.0.13"] = 282, ["192.168.0.14"] = 176 }
+		local whitelist = {}
+		local n = 0
+		for ip, count in pairs(counts) do
+			n = n + 1
+			local serial = "CLU22000000" .. n
+			for i = 1, count do
+				local objId = string.format("DOU%04d", i)
+				local path = serial .. "." .. objId
+				_registry[path] = { _objId = objId, _clu = { address = ip }, updateState = function() end }
+				whitelist[path] = true
+			end
+		end
+		RemoteSubscription.config.whitelist = whitelist
+		RemoteSubscription.autoSubscribe()
+	`)
+
+	got := mustExec(t, engine, `
+		local perIP, subs = {}, 0
+		for _, s in pairs(RemoteSubscription.activeSubscriptions) do
+			subs = subs + 1
+			perIP[s.cluIP] = (perIP[s.cluIP] or 0) + #s.objects
+		end
+		return string.format("%d %d %d %d / %d", perIP["192.168.0.11"] or 0, perIP["192.168.0.12"] or 0,
+			perIP["192.168.0.13"] or 0, perIP["192.168.0.14"] or 0, subs)
+	`)
+	// 1 + 68 + 71 + 44 sessions of up to 4 objects
+	if want := "4 271 282 176 / 184"; got != want {
+		t.Errorf("objects per CLU / sessions = %s, want %s", got, want)
+	}
+}
