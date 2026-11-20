@@ -41,6 +41,14 @@ const (
 	ClassGateJablotronSection ObjectClass = 151 // JablotronSection: a Jablotron section (State)
 	ClassGateJablotronOutput  ObjectClass = 152 // JablotronOutput: a Jablotron PG output, 1 on
 	ClassGateJablotronDevice  ObjectClass = 153 // JablotronDevice: a Jablotron device (detector), 1 active
+
+	// Register objects of a GATE Modbus (FwType 00000001, HwType 00000012), declared in its
+	// om.lua as GATE objects: MBV0001 = GATE:new(201, "MBV0001"). Numbers from Object Manager
+	// (clu_GATE_MODBUS_ft00000001_*). Value is not feature 0 (14 / 20 / 22). Config/bus
+	// classes (202, 204, 205, 206) are out of scope.
+	ClassGateModbus      ObjectClass = 200 // Modbus: Value@14, SetValue by set(14)
+	ClassGateModbusValue ObjectClass = 201 // ModbusValue: Value@20 (string in OM), WriteValue execute 1
+	ClassGateModbusRTU   ObjectClass = 203 // ModbusRTU: Value@22 read-only, WriteValue execute 1
 )
 
 // gateAlarmClasses are the classes of a GATE Alarm's alarm objects.
@@ -49,9 +57,19 @@ var gateAlarmClasses = map[ObjectClass]bool{
 	ClassGateJablotron: true, ClassGateJablotronSection: true, ClassGateJablotronOutput: true, ClassGateJablotronDevice: true,
 }
 
+// gateModbusClasses are the register-value classes of a GATE Modbus.
+var gateModbusClasses = map[ObjectClass]bool{
+	ClassGateModbus: true, ClassGateModbusValue: true, ClassGateModbusRTU: true,
+}
+
 // IsGateAlarm tells whether a class is one of a GATE Alarm's alarm objects.
 func (c ObjectClass) IsGateAlarm() bool {
 	return gateAlarmClasses[c]
+}
+
+// IsGateModbus tells whether a class is one of a GATE Modbus's register objects.
+func (c ObjectClass) IsGateModbus() bool {
+	return gateModbusClasses[c]
 }
 
 // IsGateAlarm tells whether the CLU is a GATE Alarm: FwType 00000002 and HwType 00000012
@@ -60,6 +78,14 @@ func (c CLUInfo) IsGateAlarm() bool {
 	fw, errF := strconv.ParseUint(c.FwType, 16, 32)
 	hw, errH := strconv.ParseUint(c.HwType, 16, 32)
 	return errF == nil && errH == nil && fw == 0x02 && hw == 0x12
+}
+
+// IsGateModbus tells whether the CLU is a GATE Modbus: FwType 00000001 and HwType 00000012
+// in its om.lua. Alarm and HTTP GATEs share the HwType with other FwTypes.
+func (c CLUInfo) IsGateModbus() bool {
+	fw, errF := strconv.ParseUint(c.FwType, 16, 32)
+	hw, errH := strconv.ParseUint(c.HwType, 16, 32)
+	return errF == nil && errH == nil && fw == 0x01 && hw == 0x12
 }
 
 // String returns the human-readable name of the object class
@@ -119,6 +145,12 @@ func (c ObjectClass) String() string {
 		return "GATE_JABLOTRON_OUTPUT"
 	case ClassGateJablotronDevice:
 		return "GATE_JABLOTRON_DEVICE"
+	case ClassGateModbus:
+		return "GATE_MODBUS"
+	case ClassGateModbusValue:
+		return "GATE_MODBUS_VALUE"
+	case ClassGateModbusRTU:
+		return "GATE_MODBUS_RTU"
 	default:
 		return "UNKNOWN"
 	}
@@ -149,6 +181,9 @@ func (c ObjectClass) MQTTType() string {
 		return "binary_sensor"
 	case ClassGateSatelOutput, ClassGateJablotronOutput:
 		return "switch"
+	// A GATE Modbus register as a number (Value is not feature 0; the proxy maps set(0)).
+	case ClassGateModbus, ClassGateModbusValue, ClassGateModbusRTU:
+		return "number"
 	// ClassThermostat (18) is a climate: registered apart, exposed only by expose() in Lua.
 	// So are a GATE Alarm's zones and sections (arming), and its connection objects.
 	default:

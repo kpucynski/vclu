@@ -42,7 +42,7 @@ var (
 	rePeripheryObject = regexp.MustCompile(`^\s*(THE\w*)\s*=\s*OBJECT:new\s*\(\s*(\d+)\s*,\s*"[^"]*"\s*\)`)
 
 	// GATE object: SAT0001 = GATE:new(100, "SAT0001"). A GATE's own objects, without a
-	// module; which ones vCLU reads depends on the GATE (gateAlarmClasses on a GATE Alarm).
+	// module; which ones vCLU reads depends on the GATE (alarm / Modbus classes).
 	reGateObject = regexp.MustCompile(`^\s*([A-Za-z][A-Za-z0-9_]*)\s*=\s*GATE:new\s*\(\s*(\d+)\s*,\s*"[^"]*"\s*\)`)
 
 	// IO name comment: -- NAME_IO P1_DACHOWE_BOK=DOU5048
@@ -226,17 +226,27 @@ func Parse(content string) (*ParsedOM, error) {
 		}
 	}
 
-	// A GATE Alarm's alarm objects; the same classes on another CLU are something else
+	// A GATE Alarm's or GATE Modbus's objects; the same classes on another CLU are something else
 	alarm := result.CLU.IsGateAlarm()
+	modbus := result.CLU.IsGateModbus()
 	for _, obj := range gateObjects {
-		if !obj.Class.IsGateAlarm() {
-			continue // other GATE objects (HTTP requests, timers...) vCLU does not read
-		}
-		if !alarm {
-			result.Warnings = append(result.Warnings, fmt.Sprintf(
-				"%s: class %d is an alarm object only on a GATE Alarm (FwType 00000002, HwType 00000012); this CLU has FwType %q, HwType %q, left out",
-				obj.ID, obj.Class, result.CLU.FwType, result.CLU.HwType))
-			continue
+		switch {
+		case obj.Class.IsGateAlarm():
+			if !alarm {
+				result.Warnings = append(result.Warnings, fmt.Sprintf(
+					"%s: class %d is an alarm object only on a GATE Alarm (FwType 00000002, HwType 00000012); this CLU has FwType %q, HwType %q, left out",
+					obj.ID, obj.Class, result.CLU.FwType, result.CLU.HwType))
+				continue
+			}
+		case obj.Class.IsGateModbus():
+			if !modbus {
+				result.Warnings = append(result.Warnings, fmt.Sprintf(
+					"%s: class %d is a Modbus register only on a GATE Modbus (FwType 00000001, HwType 00000012); this CLU has FwType %q, HwType %q, left out",
+					obj.ID, obj.Class, result.CLU.FwType, result.CLU.HwType))
+				continue
+			}
+		default:
+			continue // other GATE objects (HTTP requests, timers, Modbus config...) vCLU does not read
 		}
 		if _, dup := result.ObjectMap[obj.ID]; dup {
 			continue

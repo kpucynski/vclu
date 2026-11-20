@@ -50,6 +50,10 @@ TypeMap.grentonToExpose = {
     GATE_JABLOTRON_OUTPUT = "switch",
     GATE_SATEL_ZONE = "switch",
     GATE_JABLOTRON_SECTION = "switch",
+    -- A GATE Modbus's register values (RemoteGateModbus.lua); Value is not feature 0
+    GATE_MODBUS = "number",
+    GATE_MODBUS_VALUE = "number",
+    GATE_MODBUS_RTU = "number",
 }
 
 -- Expose type to Home Assistant component mapping
