@@ -114,8 +114,11 @@ func GenerateProxy(parsed *ParsedOM, config GeneratorConfig) string {
 	generateObjectsForClass(&sb, parsed, namespace, names, ClassPanel, "RemotePanel")
 	generateObjectsForClass(&sb, parsed, namespace, names, ClassThermostat, "RemoteThermostat")
 	generatePanelButtons(&sb, parsed, namespace, names)
-	// A GATE Alarm's objects (Parse keeps them only on a GATE Alarm)
+	// A GATE Alarm's / GATE Modbus's objects (Parse keeps them only on the matching GATE)
 	for _, g := range gateAlarmProxies {
+		generateObjectsForClass(&sb, parsed, namespace, names, g.class, g.proxy)
+	}
+	for _, g := range gateModbusProxies {
 		generateObjectsForClass(&sb, parsed, namespace, names, g.class, g.proxy)
 	}
 
@@ -124,7 +127,7 @@ func GenerateProxy(parsed *ParsedOM, config GeneratorConfig) string {
 		sb.WriteString("-- Register objects for event forwarding\n")
 		// Thermostats too: not auto-exposed (a climate, by expose() only), but the Sync list
 		// and the subscriptions find objects in the registry. So are a GATE Alarm's zones,
-		// sections and connections.
+		// sections and connections (Modbus registers are exposable numbers).
 		objects := append(parsed.GetExposableObjects(), parsed.GetObjectsByClass(ClassThermostat)...)
 		for _, g := range gateAlarmProxies {
 			if !g.class.IsExposable() {
@@ -156,6 +159,17 @@ var gateAlarmProxies = []struct {
 	{ClassGateJablotronSection, "RemoteGateJablotronSection"},
 	{ClassGateJablotronOutput, "RemoteGateJablotronOutput"},
 	{ClassGateJablotronDevice, "RemoteGateJablotronDevice"},
+}
+
+// gateModbusProxies are the Lua classes of a GATE Modbus's register objects
+// (pkg/lua/runtime/objects/RemoteGateModbus.lua).
+var gateModbusProxies = []struct {
+	class ObjectClass
+	proxy string
+}{
+	{ClassGateModbus, "RemoteGateModbus"},
+	{ClassGateModbusValue, "RemoteGateModbusValue"},
+	{ClassGateModbusRTU, "RemoteGateModbusRTU"},
 }
 
 func generateObjectsForClass(sb *strings.Builder, parsed *ParsedOM, namespace string, names map[string]string, class ObjectClass, proxyClass string) {

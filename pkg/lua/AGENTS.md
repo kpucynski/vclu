@@ -241,9 +241,17 @@ in `RemoteObject`'s `get`/`set`/`execute` (a guard given once by `RemoteObject._
 out of reach of scripts with its own copy of the tables), and Wire asks `RemoteObject.refusal` for
 a read it sends past the proxy; a new way to send a script for an object must ask it too.
 
+### GATE Modbus (#255)
+A GATE Modbus (om.lua FwType 00000001, HwType 00000012) declares register objects as GATE
+objects (`MBV0001 = GATE:new(201, "MBV0001")`); `runtime/objects/RemoteGateModbus.lua` has their
+numbers. Value is not feature 0 (Modbus 14, ModbusValue 20, ModbusRTU 22); Sync uses
+`subscribeFeatures()`. Writes: set(14) for Modbus, `WriteValue` (execute 1) for ModbusValue/RTU.
+Settings features are refused; config classes 202/204–206 are not imported.
+
 ### Untested on hardware
-`RemoteLight` (dimmer), `RemoteLedChannel`, the colour of `RemoteRGBLight`, `RemoteCover` (roller) and
-`RemoteGateAlarm` (GATE Alarm) in `runtime/objects/` follow the documentation, not a real module. Say so in the PR when you change them; a hardware report is welcome.
+`RemoteLight` (dimmer), `RemoteLedChannel`, the colour of `RemoteRGBLight`, `RemoteCover` (roller),
+`RemoteGateAlarm` (GATE Alarm) and `RemoteGateModbus` (GATE Modbus) in `runtime/objects/` follow
+the documentation, not a real module. Say so in the PR when you change them; a hardware report is welcome.
 
 ## runtime/integrations: Home Assistant, MQTT, HTTP
 

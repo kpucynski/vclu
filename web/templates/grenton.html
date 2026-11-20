@@ -382,6 +382,9 @@
                                         <button class="btn btn-sm btn-outline-primary" data-type="DIMM">DIMM</button>
                                         <button class="btn btn-sm btn-outline-primary" data-type="AnalogIN">AnalogIN</button>
                                         <button class="btn btn-sm btn-outline-primary" data-type="ONE_WIRE">Temp</button>
+                                        <button class="btn btn-sm btn-outline-primary" data-type="GATE_MODBUS_VALUE">ModbusValue</button>
+                                        <button class="btn btn-sm btn-outline-primary" data-type="GATE_MODBUS_RTU">ModbusRTU</button>
+                                        <button class="btn btn-sm btn-outline-primary" data-type="GATE_MODBUS">Modbus</button>
                                         <span class="mx-1"></span>
                                         <button class="btn btn-sm btn-outline-secondary" id="syncSelectAll">All</button>
                                         <button class="btn btn-sm btn-outline-secondary" id="syncDeselectAll">None</button>
@@ -763,6 +766,7 @@
         function getTypeIcon(type) {
             var icons = { DOUT: 'bi-toggle-on', DIN: 'bi-toggle-off', DIMM: 'bi-brightness-high',
                 AnalogIN: 'bi-speedometer', AnalogOUT: 'bi-sliders', ROLLER: 'bi-arrows-expand',
+                GATE_MODBUS: 'bi-hdd-network', GATE_MODBUS_VALUE: 'bi-hdd-network', GATE_MODBUS_RTU: 'bi-hdd-network',
                 ONE_WIRE: 'bi-thermometer-half' };
             return icons[type] || 'bi-circle';
         }
