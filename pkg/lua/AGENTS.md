@@ -239,7 +239,9 @@ Grenton's SatelZone is a Satel partition and its SatelInput a Satel zone, so the
 `RemoteGate*`, never the Satel integration's names. Their guards (disarm, secret features) sit
 in `RemoteObject`'s `get`/`set`/`execute` (a guard given once by `RemoteObject._setGuard`, kept
 out of reach of scripts with its own copy of the tables), and Wire asks `RemoteObject.refusal` for
-a read it sends past the proxy; a new way to send a script for an object must ask it too.
+a read it sends past the proxy; a new way to send a script for an object must ask it too. An
+exposed zone or section is expose type `alarm` (HA `alarm_control_panel`); inputs get
+`device_class: safety`. Contract: `gate_alarm_test.go` (`TestGateAlarmHAAlarmControlPanel`).
 
 ### Untested on hardware
 `RemoteLight` (dimmer), `RemoteLedChannel`, the colour of `RemoteRGBLight`, `RemoteCover` (roller) and

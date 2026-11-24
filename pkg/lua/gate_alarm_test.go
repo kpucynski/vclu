@@ -235,8 +235,8 @@ func TestGateAlarmOnlyListedCommands(t *testing.T) {
 	}
 }
 
-// Home Assistant's switch (and HomeKit's) writes an exposed zone with h:setValue(v), which
-// ends in set(0, v): off is refused without allowDisarm and sent with it.
+// Home Assistant's alarm (and HomeKit's switch) writes an exposed zone with h:setValue(v),
+// which ends in set(0, v): off is refused without allowDisarm and sent with it.
 func TestGateAlarmExposedSwitchDisarm(t *testing.T) {
 	for _, allow := range []bool{false, true} {
 		engine, sent, _ := gateAlarmEngine(t, allow)
@@ -339,10 +339,10 @@ func TestGateAlarmExposure(t *testing.T) {
 		t.Error("a group exposed the zone")
 	}
 
-	// by expose() a zone is a switch: on arms, off is refused like any disarm
+	// by expose() a zone is an alarm: on arms, off is refused like any disarm
 	got := mustExec(t, engine, `local h = alarm.alarm_ground:expose()
 		return h.type .. " " .. tostring(h:setValue(0)) .. " " .. tostring(h:setValue(1))`)
-	if got != "switch false true" {
+	if got != "alarm false true" {
 		t.Errorf("exposed zone %q", got)
 	}
 	if got := sent.take(); got != "SAT0002:execute(0)" {
@@ -456,9 +456,9 @@ func TestGateAlarmUnknownStateNotOff(t *testing.T) {
 	for _, c := range []struct {
 		value, ha, cloud string
 	}{
-		{"1", "ON", "true"},
+		{"1", "armed_away", "true"},
 		{"-1", "None", "<nil>"},
-		{"0", "OFF", "false"},
+		{"0", "disarmed", "false"},
 	} {
 		mustExec(t, engine, `alarm.alarm_ground:updateState(`+c.value+`) HAStatePublisher.refresh()`)
 		if got := mustExec(t, engine, `return haState()`); got != c.ha {
@@ -517,5 +517,72 @@ func TestGateAlarmMCPOnlyListedMethods(t *testing.T) {
 	}
 	if got := mustExec(t, engine, `return MCP.execute_method("t:plain", "get", "[0]")`); !strings.Contains(got, "method not found") {
 		t.Errorf("get on a plain object: %s", got)
+	}
+}
+
+// An exposed GATE SatelZone is a Home Assistant alarm_control_panel (armed_away / disarmed),
+// not a switch; ARM_AWAY arms and inputs get device_class safety.
+func TestGateAlarmHAAlarmControlPanel(t *testing.T) {
+	engine, sent, _ := gateAlarmEngine(t, true)
+	got := mustExec(t, engine, `(function()
+		_pub = {}
+		HAStatePublisher.setup({
+			publish = function(self, topic, payload) table.insert(_pub, { topic = topic, payload = payload }); return true end,
+			subscribe = function() end, unsubscribe = function() end,
+		})
+		HACommands.setup({
+			subscribe = function() end, unsubscribe = function() end,
+		})
+		exposeRegistry()
+		local h = alarm.alarm_ground:expose({ name = "Dom", path = "alarm:dom" })
+		local config, inputConfig
+		for _, p in ipairs(_pub) do
+			if p.topic:find("alarm_dom", 1, true) and p.topic:find("/config", 1, true) then config = p end
+			if p.topic:find("sat0003", 1, true) and p.topic:find("/config", 1, true) then inputConfig = p end
+		end
+		alarm.alarm_ground:updateState(1)
+		HAStatePublisher.refresh()
+		local stateTopic = "vclu/exposed/alarm/alarm_control_panel/dom/state"
+		local state
+		for _, p in ipairs(_pub) do
+			if p.topic == stateTopic then state = p.payload end
+		end
+		local okArm = select(1, HACommands.handleExposedMessage(
+			"vclu/exposed/alarm/alarm_control_panel/dom/set", "ARM_AWAY"))
+		local okDisarm = select(1, HACommands.handleExposedMessage(
+			"vclu/exposed/alarm/alarm_control_panel/dom/set", "DISARM"))
+		return h.type .. "|" .. tostring(config and config.topic) .. "|" .. tostring(config and config.payload)
+			.. "|" .. tostring(state) .. "|" .. tostring(okArm) .. "|" .. tostring(okDisarm)
+			.. "|" .. tostring(inputConfig and inputConfig.payload)
+	end)()`)
+	parts := strings.SplitN(got, "|", 7)
+	if len(parts) != 7 {
+		t.Fatalf("unexpected %q", got)
+	}
+	if parts[0] != "alarm" || !strings.Contains(parts[1], "/alarm_control_panel/") {
+		t.Errorf("type/topic = %s %s", parts[0], parts[1])
+	}
+	for _, want := range []string{
+		`"payload_arm_away":"ARM_AWAY"`, `"payload_disarm":"DISARM"`,
+		`"state_topic":"vclu/exposed/alarm/alarm_control_panel/dom/state"`,
+	} {
+		if !strings.Contains(parts[2], want) {
+			t.Errorf("discovery missing %s: %s", want, parts[2])
+		}
+	}
+	if strings.Contains(parts[2], `"component":"switch"`) || strings.Contains(parts[1], "/switch/") {
+		t.Errorf("still a switch: %s %s", parts[1], parts[2])
+	}
+	if parts[3] != "armed_away" {
+		t.Errorf("state %q, want armed_away", parts[3])
+	}
+	if parts[4] != "true" || parts[5] != "true" {
+		t.Errorf("ARM/DISARM = %s/%s", parts[4], parts[5])
+	}
+	if got := sent.take(); !strings.Contains(got, "SAT0002:execute(0)") || !strings.Contains(got, "SAT0002:execute(1)") {
+		t.Errorf("sent %q", got)
+	}
+	if !strings.Contains(parts[6], `"device_class":"safety"`) {
+		t.Errorf("input discovery missing safety: %s", parts[6])
 	}
 }

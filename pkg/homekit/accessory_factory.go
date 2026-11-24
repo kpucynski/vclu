@@ -85,7 +85,9 @@ func (s *Server) createExposedAccessory(obj ExposedObject, readonly bool) *Acces
 	var climateFunc func(ExposedClimate)
 
 	switch obj.Type {
-	case "switch":
+	case "switch", "alarm":
+		// alarm (GATE SatelZone / JablotronSection): HomeKit has no MQTT-style
+		// alarm_control_panel; show as a switch. Satel objects stay read-only.
 		acc, updateFunc = s.createExposedSwitch(info, obj, readonly)
 	case "light", "dimmer":
 		acc, updateFunc, colorFunc = s.createExposedLightbulb(info, obj, readonly)

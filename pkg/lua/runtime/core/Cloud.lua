@@ -306,6 +306,8 @@ local ACTIONS = {
     dimmer = { on = true, off = true, set = true },
     cover = { open = true, close = true, stop = true, set = true },
     scene = { execute = true },
+    -- GATE SatelZone / JablotronSection: on arms, off disarms
+    alarm = { on = true, off = true },
 }
 -- A switch exposed with pulse (a gate, an intercom): "otwórz bramę" is open, and close pulses too
 local PULSE_ACTIONS = { on = true, off = true, open = true, close = true }
@@ -477,10 +479,10 @@ end
 
 -- What each type's state is (the protocol's states): on for these, a cover's position, a reading
 local ON_TYPES = { light = true, switch = true, dimmer = true, fan = true, binary_sensor = true,
-    motion = true, sensor = true }
+    motion = true, sensor = true, alarm = true }
 local READING_TYPES = { temperature = true, humidity = true, illuminance = true }
 -- On/off types whose negative value is unknown (a GATE Alarm's zone reports -1), as for HA
-local UNKNOWN_IF_NEGATIVE = { switch = true, sensor = true, motion = true, occupancy = true }
+local UNKNOWN_IF_NEGATIVE = { switch = true, sensor = true, motion = true, occupancy = true, alarm = true }
 
 -- A finite number, or nil
 local function finite(v)

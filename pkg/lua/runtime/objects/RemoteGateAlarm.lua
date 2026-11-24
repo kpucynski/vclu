@@ -161,7 +161,7 @@ end
 
 --- A Satel partition (Grenton's SatelZone, class 100): 1 armed, 0 disarmed, -1 unknown.
 -- Events OnChange, OnArm, OnDisarm. Not exposed to Home Assistant or HomeKit unless by
--- expose() (a switch: on arms, off disarms; HomeKit shows it read-only).
+-- expose() (an alarm: ARM_AWAY arms, DISARM disarms; HomeKit shows it read-only as a switch).
 RemoteGateSatelZone = class("RemoteGateSatelZone", "GATE_SATEL_ZONE",
     {"getValue", "isArmed", "armZone", "disarmZone"})
 RemoteGateSatelZone.ARM = 0
@@ -337,9 +337,9 @@ function RemoteGateJablotron:subscribeFeatures() return {} end
 
 --- A Jablotron section (class 151): its State. Events OnChange (and OnStateChange), OnArm
 -- (from 0 to another state), OnDisarm (back to 0). Not exposed unless by expose()
--- (a switch: on arms, off disarms; HomeKit read-only). UNVERIFIED: which number is which
--- state is not known (0 is taken as disarmed); OnArm/OnDisarm may be wrong for alarm or
--- exit-delay states.
+-- (an alarm: ARM_AWAY / ARM_HOME arm, DISARM disarms; HomeKit read-only as a switch).
+-- UNVERIFIED: which number is which state is not known (0 is taken as disarmed);
+-- OnArm/OnDisarm may be wrong for alarm or exit-delay states.
 RemoteGateJablotronSection = class("RemoteGateJablotronSection", "GATE_JABLOTRON_SECTION",
     {"getValue", "arm", "armPartially", "disarm"})
 RemoteGateJablotronSection.ARM = 0

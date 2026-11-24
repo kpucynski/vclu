@@ -277,6 +277,22 @@ function HACommands.handleExposedMessage(topic, payload)
             handle:executeScene()
             return true
         end
+    elseif exposedType == "alarm" then
+        -- GATE SatelZone / JablotronSection: ARM_* arms, DISARM disarms (refused unless allowDisarm).
+        -- setValue ends in set(0, v) → armZone/arm or disarmZone/disarm; ARM_HOME prefers armPartially.
+        local obj = handle.object
+        if payload == "ARM_HOME" and type(obj) == "table" and type(obj.armPartially) == "function" then
+            local ok = pcall(obj.armPartially, obj)
+            return ok, ok and nil or "arm home failed"
+        elseif payload == "ARM_AWAY" or payload == "ARM_HOME" or payload == "ARM_NIGHT"
+            or payload == "ARM_VACATION" then
+            if not handle:setValue(1) then return false, "arm failed" end
+            return true
+        elseif payload == "DISARM" then
+            if not handle:setValue(0) then return false, "disarm failed" end
+            return true
+        end
+        return false, "alarm takes ARM_AWAY, ARM_HOME or DISARM"
     end
 
     if Logger then

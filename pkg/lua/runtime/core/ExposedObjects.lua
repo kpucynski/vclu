@@ -500,6 +500,8 @@ local capabilities = {
     -- a thermostat (getValue, getTarget, setSetpoint): only by expose(), never by exposeRegistry()
     climate = { read = true, write = true, temperature = true, range = {5, 35}, explicitOnly = true },
     garage_door = { read = true, write = true, binary = true },
+    -- a GATE Alarm zone/section (arm/disarm): only by expose(), never by exposeRegistry()
+    alarm = { read = true, write = true, binary = true, explicitOnly = true },
 }
 
 -- The target range of a climate: the expose options min/max, else the type's

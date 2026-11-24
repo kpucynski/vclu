@@ -126,21 +126,24 @@ func TestSensorAccessories(t *testing.T) {
 }
 
 // Satel objects are read-only in the Home app (decision 2026-10-09).
+// GATE SatelZones expose as type "alarm" (HA alarm_control_panel); HomeKit still uses a switch.
 func TestSatelIsReadonly(t *testing.T) {
-	s := &Server{
-		luaExecutor:   fakeLua{json: `[{"path":"satel.partition.1","type":"switch","name":"Parter","value":0,"readonly":false,"satel":true,"caps":{}}]`},
-		accessManager: accesscontrol.NewManager(t.TempDir()),
-	}
-	objs, err := s.fetchExposed()
-	if err != nil {
-		t.Fatal(err)
-	}
-	w := s.buildAccessories(objs)["satel.partition.1"]
-	if w == nil {
-		t.Fatal("partition not shown")
-	}
-	if on := findChar(w.Accessory, characteristic.TypeOn); hasPerm(on, characteristic.PermissionWrite) {
-		t.Error("a Satel partition must not be switchable from the Home app")
+	for _, typ := range []string{"switch", "alarm"} {
+		s := &Server{
+			luaExecutor:   fakeLua{json: `[{"path":"satel.partition.1","type":"` + typ + `","name":"Parter","value":0,"readonly":false,"satel":true,"caps":{}}]`},
+			accessManager: accesscontrol.NewManager(t.TempDir()),
+		}
+		objs, err := s.fetchExposed()
+		if err != nil {
+			t.Fatal(err)
+		}
+		w := s.buildAccessories(objs)["satel.partition.1"]
+		if w == nil {
+			t.Fatalf("%s: partition not shown", typ)
+		}
+		if on := findChar(w.Accessory, characteristic.TypeOn); hasPerm(on, characteristic.PermissionWrite) {
+			t.Errorf("%s: a Satel partition must not be switchable from the Home app", typ)
+		}
 	}
 }
 

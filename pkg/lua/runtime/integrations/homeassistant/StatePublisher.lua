@@ -136,6 +136,16 @@ local function formatExposedState(value, exposedType)
             return "OFF"
         end
 
+    elseif exposedType == "alarm" then
+        -- GATE SatelZone / JablotronSection: 1 armed, 0 disarmed, -1 unknown
+        if type(value) == "number" and value < 0 then
+            return "None"
+        end
+        if value == 1 or value == true or value == "1" or value == "armed_away" then
+            return "armed_away"
+        end
+        return "disarmed"
+
     elseif exposedType == "light" or exposedType == "dimmer" then
         local numVal = tonumber(value) or 0
         if numVal > 0 then
@@ -725,6 +735,24 @@ local function onObjectExposed(data)
         discoveryPayload.state_closed = "closed"
         discoveryPayload.state_opening = "opening"
         discoveryPayload.state_closing = "closing"
+    end
+
+    -- Alarm panel (GATE SatelZone / JablotronSection): armed_away / disarmed
+    if exposedType == "alarm" and not readonlyRemapped then
+        discoveryPayload.payload_arm_away = "ARM_AWAY"
+        discoveryPayload.payload_arm_home = "ARM_HOME"
+        discoveryPayload.payload_disarm = "DISARM"
+        discoveryPayload.supported_features = { "arm_home", "arm_away" }
+        -- was announced as a switch before: drop the retained switch discovery
+        HAStatePublisher.mqttInstance:publish(
+            string.format("homeassistant/switch/%s/config", uniqueId), "", 0, true)
+    end
+
+    -- GATE Alarm inputs/devices: security binary sensors in HA's Security dashboard
+    local objType = handle and handle.object and handle.object._type
+    if component == "binary_sensor" and not options.device_class
+        and (objType == "GATE_SATEL_INPUT" or objType == "GATE_JABLOTRON_DEVICE") then
+        discoveryPayload.device_class = "safety"
     end
 
     -- (Area is handled via the per-room device.suggested_area above; HA ignores a
